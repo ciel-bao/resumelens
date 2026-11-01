@@ -105,6 +105,13 @@ $("btn-settings-save").addEventListener("click", () => {
   closeSettings();
   updateDemoBadge();
   toast("设置已保存（仅存本机浏览器）");
+  // 配置 Key 后，若当前结果是本地预览，自动用 AI 重新分析同一份简历+JD
+  const justKey = $("set-key").value.trim();
+  if (justKey && (PENDING_RERUN || (RESULT && RESULT.local))) {
+    PENDING_RERUN = false;
+    toast("已配置 Key · 正在用 AI 重新分析你的简历…");
+    runAnalysis();
+  }
 });
 $("btn-settings-clear").addEventListener("click", () => {
   $("set-key").value = "";
@@ -224,7 +231,7 @@ document.querySelectorAll(".tab").forEach((t) => {
 });
 $("btn-goto-resume").addEventListener("click", () => activateTab("resume"));
 $("btn-again").addEventListener("click", () => switchView("upload"));
-$("btn-banner-key").addEventListener("click", openSettings);
+$("btn-banner-key").addEventListener("click", () => { PENDING_RERUN = true; openSettings(); });
 
 /* ---------- LLM 调用（OpenAI 兼容） ---------- */
 async function chatJSON(system, user, maxTokens = 3000) {
@@ -306,6 +313,7 @@ const PROMPT_RESUME = `你是顶级简历改写专家。根据用户的【原简
 /* ---------- 分析主流程 ---------- */
 let RESULT = null; // {report, screen, resume}
 let SOURCE = null; // {resumeText, jdText}
+let PENDING_RERUN = false; // 从提示条进入设置并保存 Key 后，自动重新分析
 
 async function getResumeText() {
   if (resumeFile) return extractText(resumeFile);
@@ -507,9 +515,18 @@ async function runAnalysis() {
     updateTopnavForResults();
     if (isLocal) toast("本地预览已生成 · 配置 API Key 解锁 AI 深度分析与重写");
   } catch (e) {
-    switchView("upload");
-    if (e.message === "NO_KEY") { openSettings(); showUploadError("尚未配置 API Key，无法进行真实分析。"); }
-    else showUploadError("分析失败：" + e.message);
+    if (e.message === "NO_KEY") {
+      switchView("upload");
+      openSettings();
+      showUploadError("尚未配置 API Key，无法进行真实分析。");
+    } else if (RESULT) {
+      // 已有旧结果时保留在结果页，只提示失败，避免用户丢失已生成内容
+      switchView("results");
+      toast("分析失败：" + e.message);
+    } else {
+      switchView("upload");
+      showUploadError("分析失败：" + e.message);
+    }
   } finally {
     $("btn-analyze").disabled = false;
   }
