@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResumeLens · 简历透视 — 在投递前，先知道 HR 会怎么筛你</title>
+<meta name="description" content="AI 简历体检 + 面试官模拟筛选 + 一键生成优化版简历。上传简历与岗位 JD，10 秒看清差距。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%235B6CFF'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'>R</text></svg>">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">ResumeLens<span class="brand-dot">·</span>简历透视</div>
+    <nav class="topnav" id="topnav">
+      <a href="#" data-nav="upload" class="active">开始分析</a>
+      <a href="#" data-nav="results-report" hidden>体检报告</a>
+      <a href="#" data-nav="results-screen" hidden>面试官模拟筛</a>
+      <a href="#" data-nav="results-resume" hidden>优化版简历</a>
+    </nav>
+    <div class="topbar-right">
+      <span id="demo-badge" class="demo-badge" hidden>演示模式</span>
+      <button id="btn-settings" class="btn-ghost-light" type="button">设置 API Key</button>
+    </div>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- ====== 视图 1：上传 ====== -->
+  <section id="view-upload" class="view">
+    <div class="hero">
+      <div class="hero-badge">AI 简历透视 · 投递前先看清自己</div>
+      <h1 class="hero-title">在投递前，先知道 HR 会怎么筛你</h1>
+      <p class="hero-sub">AI 面试官模拟筛 × 简历体检 × 一键优化——把简历从「差不多」变成「敢投」</p>
+    </div>
+
+    <div class="card card-upload">
+      <div class="upload-head">
+        <h2 class="upload-title">上传简历与岗位 JD，AI 多维度分析</h2>
+        <p class="upload-sub">支持 PDF / Word / TXT，AI 将提取关键信息并对照岗位做匹配、模拟筛选与优化</p>
+      </div>
+      <div class="upload-row">
+        <div class="drop" id="drop-resume" tabindex="0">
+          <input type="file" id="file-resume" accept=".pdf,.doc,.docx,.txt,.md" hidden>
+          <div class="drop-title" id="resume-title">拖入简历 / 点击上传</div>
+          <div class="drop-sub" id="resume-sub">PDF · Word · TXT（或粘贴文本）</div>
+        </div>
+        <div class="drop drop-jd" id="drop-jd" tabindex="0">
+          <textarea id="jd-text" placeholder="把岗位 JD 完整粘贴到这里（职责要求、任职要求都要）"></textarea>
+        </div>
+        <button id="btn-analyze" class="btn-primary btn-analyze" type="button">开始分析</button>
+      </div>
+      <div class="paste-row">
+        <button id="btn-paste-toggle" class="btn-link" type="button">没有文件？直接粘贴简历文本 →</button>
+        <textarea id="resume-text" class="paste-area" placeholder="把简历内容（工作经历、项目、技能、教育背景）粘贴到这里" hidden></textarea>
+      </div>
+      <div id="upload-error" class="upload-error" hidden></div>
+    </div>
+
+    <div class="trust-row">纯浏览器本地解析 · 简历内容仅用于本次分析 · 不上传服务器</div>
+  </section>
+
+  <!-- ====== 视图 2：分析中 ====== -->
+  <section id="view-loading" class="view" hidden>
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <h2 class="loading-title" id="loading-title">正在分析你的简历…</h2>
+      <ul class="steps" id="steps">
+        <li data-step="report" class="step"><span class="step-dot"></span>简历体检 · 匹配分与硬伤诊断</li>
+        <li data-step="screen" class="step"><span class="step-dot"></span>面试官模拟筛 · 通过率推演</li>
+        <li data-step="resume" class="step"><span class="step-dot"></span>生成优化版简历</li>
+      </ul>
+      <p class="loading-hint">通常 30–90 秒，取决于模型响应速度</p>
+    </div>
+  </section>
+
+  <!-- ====== 视图 3：结果 ====== -->
+  <section id="view-results" class="view" hidden>
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-tab="report" type="button">体检报告</button>
+      <button class="tab" data-tab="screen" type="button">面试官模拟筛</button>
+      <button class="tab" data-tab="resume" type="button">优化版简历</button>
+      <button id="btn-again" class="btn-link again" type="button">↺ 重新分析</button>
+    </div>
+
+    <div id="local-banner" class="local-banner" hidden>
+      <span>未配置 API Key —— 本次结果是<b>本地规则预览</b>（非 AI），基于关键词与结构分析你的真实简历。</span>
+      <button id="btn-banner-key" class="btn-link" type="button">配置 Key，解锁 AI 深度分析 →</button>
+    </div>
+
+    <!-- Tab 1：体检报告 -->
+    <div class="panel" id="panel-report" hidden>
+      <div class="panel-head">
+        <h2 class="panel-title">简历体检报告</h2>
+        <div class="pill pill-indigo" id="report-pill">岗位匹配度 — / 100</div>
+      </div>
+      <div class="report-body">
+        <div class="score-box">
+          <div class="score-label">你的岗位匹配分</div>
+          <div class="score-num"><span id="score-value">—</span><span class="score-unit">/ 100</span></div>
+          <div class="score-beat" id="score-beat">—</div>
+          <div class="score-verdict" id="score-verdict">—</div>
+        </div>
+        <div class="dims" id="dims">
+          <div class="dims-title">能力维度拆解</div>
+          <!-- JS 填充 -->
+        </div>
+      </div>
+      <div class="issues-row">
+        <div class="box box-red">
+          <div class="box-title">致命硬伤</div>
+          <ul id="hard-issues"></ul>
+        </div>
+        <div class="box box-green">
+          <div class="box-title">亮点</div>
+          <ul id="strengths"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2：面试官模拟筛 -->
+    <div class="panel" id="panel-screen" hidden>
+      <div class="panel-head">
+        <h2 class="panel-title">面试官视角 · 模拟筛选结果</h2>
+        <div class="pill pill-red" id="screen-pill">通过率 —% → —%</div>
+      </div>
+      <div class="screen-window">
+        <div class="quote-box">
+          <div class="quote-label">面试官原话</div>
+          <p class="quote-text" id="screen-quote">—</p>
+        </div>
+        <div class="screen-cols">
+          <div class="scol scol-red">
+            <div class="scol-title">会被筛掉的原因</div>
+            <ul id="reject-reasons"></ul>
+          </div>
+          <div class="scol scol-green">
+            <div class="scol-title">补上就能进面试池</div>
+            <ul id="fix-actions"></ul>
+          </div>
+        </div>
+        <button class="btn-primary" id="btn-goto-resume" type="button">一键生成优化版简历</button>
+      </div>
+    </div>
+
+    <!-- Tab 3：优化版简历 -->
+    <div class="panel" id="panel-resume" hidden>
+      <div class="panel-head">
+        <h2 class="panel-title">一键优化版简历</h2>
+        <div class="pill pill-green" id="resume-pill">改造前 —% → 改造后 —%</div>
+      </div>
+      <div class="resume-body">
+        <div class="resume-doc">
+          <div class="resume-doc-label">优化后简历</div>
+          <div id="resume-doc-content"><!-- JS 填充 --></div>
+        </div>
+        <div class="resume-side">
+          <div class="compare-box">
+            <div class="compare-label">匹配分提升</div>
+            <div class="compare-value" id="compare-value">+—</div>
+          </div>
+          <button class="btn-green" id="btn-download" type="button">下载优化版 (.md)</button>
+          <button class="btn-outline" id="btn-copy" type="button">复制文本</button>
+          <button class="btn-outline" id="btn-print" type="button">导出 PDF（打印）</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <span>ResumeLens · 让每一份简历都敢投出去</span>
+    <span class="footer-note">结果由 AI 生成，仅供参考 · 请自行核实后再投递</span>
+  </div>
+</footer>
+
+<!-- ====== 设置弹窗 ====== -->
+<div class="modal-mask" id="settings-modal" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h3>设置 · AI 模型</h3>
+      <button class="modal-close" id="btn-settings-close" type="button">✕</button>
+    </div>
+    <p class="modal-tip">密钥只保存在你自己的浏览器（localStorage），不进入代码库、不上传任何服务器。</p>
+    <label class="field">
+      <span class="field-label">服务商</span>
+      <select id="set-provider">
+        <option value="qwen">通义千问 Qwen（阿里云百炼 · 推荐）</option>
+        <option value="deepseek">DeepSeek（更便宜）</option>
+        <option value="custom">自定义（OpenAI 兼容接口）</option>
+      </select>
+    </label>
+    <label class="field">
+      <span class="field-label">API Key</span>
+      <input type="password" id="set-key" placeholder="sk-..." autocomplete="off">
+    </label>
+    <label class="field">
+      <span class="field-label">接口地址 Base URL</span>
+      <input type="text" id="set-baseurl" placeholder="https://...">
+    </label>
+    <label class="field">
+      <span class="field-label">模型</span>
+      <input type="text" id="set-model" placeholder="qwen-plus">
+    </label>
+    <div class="model-chips" id="model-chips"></div>
+    <div class="modal-actions">
+      <button class="btn-outline" id="btn-settings-clear" type="button">清除密钥</button>
+      <button class="btn-primary" id="btn-settings-save" type="button">保存</button>
+    </div>
+    <p class="modal-note" id="settings-note"></p>
+  </div>
+</div>
+
+<!-- 打印导出区（仅导出 PDF 时显示） -->
+<div id="print-area" hidden></div>
+
+<script src="vendor/pdf.min.js"></script>
+<script src="vendor/mammoth.browser.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
