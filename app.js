@@ -120,6 +120,45 @@ $("btn-settings-clear").addEventListener("click", () => {
   toast("已清除密钥");
 });
 
+/* ---------- 测试连接：用当前表单配置发一次最小请求 ---------- */
+$("btn-settings-test").addEventListener("click", async () => {
+  const provider = $("set-provider").value;
+  const key = $("set-key").value.trim();
+  const base = ($("set-baseurl").value.trim() || PROVIDERS[provider].baseUrl).replace(/\/+$/, "");
+  const model = $("set-model").value.trim() || PROVIDERS[provider].defaultModel;
+  const out = $("test-result");
+  let host = base;
+  try { host = new URL(base).host; } catch (e) { /* 保持原样 */ }
+
+  if (!key) { out.textContent = "请先填写 API Key"; out.className = "test-result err"; return; }
+  out.textContent = "测试中…（向 " + host + " 发一次最小请求）";
+  out.className = "test-result";
+  try {
+    const res = await fetch(base + "/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
+      body: JSON.stringify({ model, messages: [{ role: "user", content: "ping" }], max_tokens: 8 })
+    });
+    if (res.ok) {
+      out.textContent = "✓ 连接成功，" + model + " 可用。点「保存」即可开始分析";
+      out.className = "test-result ok";
+    } else if (res.status === 401) {
+      out.textContent = "✗ 401：这个 Key 在 " + host + " 上无效。多半是「服务商」选错了——阿里云百炼的 Key 要选「通义千问」，DeepSeek 的 Key 要选 DeepSeek，两者不通用";
+      out.className = "test-result err";
+    } else if (res.status === 429) {
+      out.textContent = "✗ 429：Key 有效但触发限流/额度不足，稍后重试或检查百炼控制台额度";
+      out.className = "test-result err";
+    } else {
+      const detail = await res.text().catch(() => "");
+      out.textContent = "✗ 接口报错 " + res.status + "：" + detail.slice(0, 160);
+      out.className = "test-result err";
+    }
+  } catch (e) {
+    out.textContent = "✗ 网络请求失败（检查网络 / Base URL 是否正确）";
+    out.className = "test-result err";
+  }
+});
+
 /* ---------- Toast ---------- */
 let toastTimer = null;
 function toast(msg) {
@@ -264,7 +303,11 @@ async function chatJSON(system, user, maxTokens = 3000) {
   if (!res.ok) {
     let detail = "";
     try { detail = (await res.text()).slice(0, 300); } catch (e) { /* ignore */ }
-    if (res.status === 401) throw new Error("API Key 无效或未授权（401），请到设置里检查");
+    if (res.status === 401) {
+      let host = s.baseUrl;
+      try { host = new URL(s.baseUrl).host; } catch (e) { /* ignore */ }
+      throw new Error(`API Key 无效或未授权（401，接口：${host}）。常见原因：① 服务商选错——阿里云百炼的 Key 必须选「通义千问」，DeepSeek 的 Key 选 DeepSeek，两者不通用；② Key 已被重新生成。到「设置 API Key」里改好后点「测试连接」验证`);
+    }
     if (res.status === 429) throw new Error("调用频率/额度受限（429）：" + detail);
     throw new Error(`模型接口报错 ${res.status}：${detail}`);
   }

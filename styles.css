@@ -337,3 +337,9 @@ button { font-family: inherit; cursor: pointer; }
   line-height: 1.5;
 }
 .local-banner .btn-link { color: var(--indigo); font-weight: 600; white-space: nowrap; }
+
+/* ===== 测试连接 ===== */
+.test-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.test-result { font-size: 13px; line-height: 1.5; color: var(--text-3); }
+.test-result.ok { color: var(--green-deep); font-weight: 600; }
+.test-result.err { color: var(--red); font-weight: 600; }
